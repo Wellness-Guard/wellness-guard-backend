@@ -2,5 +2,5 @@
 .vscode
 postgres-data
 .env
-/infra/config-map.yaml
+/infra/k8s/config-map.yaml
 /**/dist
