@@ -1,0 +1,36 @@
+name: apply configMaps to eks
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'infra/k8s/config-map.yaml'
+env:
+  EKS_CLUSTER: ${{secrets.EKS_CLUSTER}}
+  AWS_REGION: ${{secrets.AWS_REGION}}
+
+jobs:
+  build:
+    name: config map to secret provider class
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set short git commit SHA
+        id: commit
+        uses: prompt/actions-commit-hash@v3.0.0
+
+      - name: Checkout to Code
+        uses: actions/checkout@v4.1.1
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{secrets.AWS_REGION}}
+
+      - name: Update Kube Config -> point to hosted cluster and apply secrets
+        run: |
+          aws eks update-kubeconfig --name $EKS_CLUSTER --region $AWS_REGION
+          kubectl apply -f infra/k8s/config-map.yaml

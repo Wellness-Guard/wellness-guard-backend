@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-depl
+  labels:
+    app: notification-depl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification
+  template:
+    metadata:
+      labels:
+        app: notification
+    spec:
+      containers:
+        - name: notification
+          image: 000000000000.dkr.ecr.ap-southeast-1.amazonaws.com/example-app:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: env-variables
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-srv
+  namespace: default
+spec:
+  selector:
+    app: notification
+  ports:
+    - name: notification
+      protocol: TCP
+      port: 5000
+      targetPort: 5000
+  type: NodePort

@@ -1,0 +1,51 @@
+name: deploy notification service to eks
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'notification/**'
+      - 'infra/k8s/notification-depl.yaml'
+env:
+  ECR_REPOSITORY: ${{secrets.ECR_NOTIFICATION_REPOSITORY}}
+  EKS_CLUSTER: ${{secrets.EKS_CLUSTER}}
+  IMAGE_NAME: notification
+  AWS_REGION: ${{secrets.AWS_REGION}}
+
+jobs:
+  build:
+    name: notification deployment
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set short git commit SHA
+        id: commit
+        uses: prompt/actions-commit-hash@v3.0.0
+
+      - name: Checkout to Code
+        uses: actions/checkout@v4.1.1
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{secrets.AWS_REGION}}
+
+      - name: Log Into Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2.0.1
+
+      - name: Build, Tag & Push Docker Image to ECR
+        env:
+          ECR_REGISTRY: ${{steps.ecr.outputs.registry}}
+          IMAGE_TAG: ${{ steps.commit.outputs.short }}
+        run: |
+          cd notification && docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Update Kube Config -> point to hosted cluster and Deploy to EKS
+        run: |
+          aws eks update-kubeconfig --name $EKS_CLUSTER --region $AWS_REGION
+          kubectl apply -f infra/k8s/notification-depl.yaml

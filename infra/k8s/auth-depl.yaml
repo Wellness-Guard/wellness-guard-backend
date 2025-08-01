@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-depl
+  labels:
+    app: auth-depl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      labels:
+        app: auth
+    spec:
+      containers:
+        - name: auth
+          image: 111111111111.dkr.ecr.us-west-2.amazonaws.com/auth:latest
+
+          imagePullPolicy: Always
+          # volumeMounts:
+          #   - name: my-api-token
+          #     mountPath: /mnt/api-token
+          #     readOnly: true
+          # env:
+          #   - name: GOOGLE_CLIENT_ID
+          #     valueFrom:
+          #       secretKeyRef:
+          #         name: api-token
+          #         key: GOOGLE_CLIENT_ID #comment added
+          # envFrom:
+          #   - secretRef:
+          #       name: api-token
+          envFrom:
+            - configMapRef:
+                name: env-variables
+          # command: ['npm', 'run', 'migrate']
+      # volumes:
+      #   - name: my-api-token
+      #     csi:
+      #       driver: secrets-store.csi.k8s.io
+      #       readOnly: true
+      #       volumeAttributes:
+      #         secretProviderClass: aws-secrets
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-srv
+  namespace: default
+spec:
+  selector:
+    app: auth
+  ports:
+    - name: auth
+      protocol: TCP
+      port: 3001
+      targetPort: 3001
+  type: NodePort

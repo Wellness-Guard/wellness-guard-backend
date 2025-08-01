@@ -1,0 +1,6 @@
+**/node_modules
+.vscode
+postgres-data
+.env
+/infra/config-map.yaml
+/**/dist

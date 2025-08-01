@@ -1,0 +1,85 @@
+version: '3.7'
+services:
+  adminer:
+    image: adminer:latest
+    restart: always
+    container_name: adminer
+    ports:
+      - 8080:8080
+  postgres:
+    image: postgres:latest
+    restart: always
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_MULTIPLE_DATABASES: auth,notification
+    volumes:
+      - ./init-multi-postgres-databases.sh:/docker-entrypoint-initdb.d/init-multi-postgres-databases.sh
+      - ./postgres-data:/var/lib/postgresql/data
+    ports:
+      - ${POSTGRES_PORT}:${POSTGRES_PORT}
+  auth:
+    build: ./auth
+    image: auth:latest
+    restart: always
+    container_name: auth
+    depends_on:
+      - postgres
+      - kafka
+    env_file: .env
+    ports:
+      - ${AUTH_PORT}:${AUTH_PORT}
+    environment:
+      AUTH_PORT: ${AUTH_PORT}
+    volumes:
+      - ./auth:/app
+  notification:
+    build: ./notification
+    image: notification:latest
+    restart: always
+    container_name: notification
+    depends_on:
+      - kafka
+      - postgres
+    env_file: .env
+    ports:
+      - ${NOTIFICATION_PORT}:${NOTIFICATION_PORT}
+    volumes:
+      - ./notification:/app
+  # medication:
+  #   build: ./medication
+  #   image: medication:latest
+  #   restart: always
+  #   container_name: medication
+  #   depends_on:
+  #     - postgres
+  #     - kafka
+  #   env_file: .env
+  #   ports:
+  #     - ${MEDICATION_PORT}:${MEDICATION_PORT}
+  #   volumes:
+  #     - ./medication:/app
+  zookeeper:
+    image: wurstmeister/zookeeper
+    container_name: zookeeper
+    ports:
+      - '${ZOOKEEPER_PORT}:${ZOOKEEPER_PORT}'
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+  kafka:
+    image: wurstmeister/kafka
+    container_name: kafka
+    ports:
+      - ${KAFKA_PORT}:${KAFKA_PORT}
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: localhost
+      KAFKA_ZOOKEEPER_CONNECT: ${ZOOKEEPER_CONNECT}
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,OUTSIDE://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,OUTSIDE://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CREATE_TOPICS: 'event:1:1'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
